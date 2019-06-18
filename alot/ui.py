@@ -34,7 +34,7 @@ async def periodic(callable_, period, *args, **kwargs):
         await asyncio.sleep(period)
 
 
-class UI(object):
+class UI:
     """
     This class integrates all components of alot and offers
     methods for user interaction like :meth:`prompt`, :meth:`notify` etc.
@@ -685,7 +685,7 @@ class UI(object):
         footerright = urwid.Text(righttxt, align='right')
         columns = urwid.Columns([
             footerleft,
-            ('fixed', len(righttxt), footerright)])
+            ('pack', footerright)])
         footer_att = settings.get_theming_attribute('global', 'footer')
         return urwid.AttrMap(columns, footer_att)
 

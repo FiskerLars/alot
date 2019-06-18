@@ -446,9 +446,9 @@ def remove_cte(part, as_string=False):
             sp = helper.try_decode(bp)
         except UnicodeDecodeError as emsg:
             # the mail contains chars that are not enc-encoded.
-            # try again and just ignore those
+            # libmagic works better than just ignoring those
             logging.debug('Decoding failure: {}'.format(emsg))
-            sp = bp.decode(enc, errors='ignore')
+            sp = helper.try_decode(bp)
         return sp
     return bp
 
@@ -512,6 +512,20 @@ def extract_body(mail, types=None, field_key='copiousoutput'):
     return u'\n\n'.join(body_parts)
 
 
+def formataddr(pair):
+    """ this is the inverse of email.utils.parseaddr:
+    other than email.utils.formataddr, this
+    - *will not* re-encode unicode strings, and
+    - *will* re-introduce quotes around real names containing commas
+    """
+    name, address = pair
+    if not name:
+        return address
+    elif ',' in name:
+        name = "\"" + name + "\""
+    return "{0} <{1}>".format(name, address)
+
+
 def decode_header(header, normalize=False):
     """
     decode a header value to a unicode string
@@ -526,15 +540,9 @@ def decode_header(header, normalize=False):
     :type normalize: bool
     :rtype: str
     """
-    # some mailers send out incorrectly escaped headers
-    # and double quote the escaped realname part again. remove those
-    # RFC: 2047
-    regex = r'"(=\?.+?\?.+?\?[^ ?]+\?=)"'
-    value = re.sub(regex, r'\1', header)
-    logging.debug("unquoted header: |%s|", value)
+    logging.debug("unquoted header: |%s|", header)
 
-    # otherwise we interpret RFC2822 encoding escape sequences
-    valuelist = email.header.decode_header(value)
+    valuelist = email.header.decode_header(header)
     decoded_list = []
     for v, enc in valuelist:
         v = string_decode(v, enc)
@@ -553,3 +561,34 @@ def is_subdir_of(subpath, superpath):
     # return true, if the common prefix of both is equal to directory
     # e.g. /a/b/c/d.rst and directory is /a/b, the common prefix is /a/b
     return os.path.commonprefix([subpath, superpath]) == superpath
+
+
+def clear_my_address(my_account, value):
+    """return recipient header without the addresses in my_account
+
+    :param my_account: my account
+    :type my_account: :class:`Account`
+    :param value: a list of recipient or sender strings (with or without
+        real names as taken from email headers)
+    :type value: list(str)
+    :returns: a new, potentially shortend list
+    :rtype: list(str)
+    """
+    new_value = []
+    for name, address in email.utils.getaddresses(value):
+        if not my_account.matches_address(address):
+            new_value.append(formataddr((name, address)))
+    return new_value
+
+
+def ensure_unique_address(recipients):
+    """
+    clean up a list of name,address pairs so that
+    no address appears multiple times.
+    """
+    res = dict()
+    for name, address in email.utils.getaddresses(recipients):
+        res[address] = name
+    logging.debug(res)
+    urecipients = [formataddr((n, a)) for a, n in res.items()]
+    return sorted(urecipients)

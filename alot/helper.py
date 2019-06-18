@@ -276,6 +276,8 @@ def call_cmd(cmdlist, stdin=None):
     if isinstance(stdin, str):
         stdin = stdin.encode(termenc)
     try:
+
+        logging.debug("Calling %s" % cmdlist)
         proc = subprocess.Popen(
             cmdlist,
             stdout=subprocess.PIPE,
@@ -430,6 +432,11 @@ def libmagic_version_at_least(version):
         # The magic_version function has been introduced in libmagic 5.13,
         # if it's not present, we can't guess right, so let's assume False
         return False
+
+    # Depending on the libmagic/ctypes version, magic_version is a function or
+    # a callable:
+    if callable(magic_wrapper.magic_version):
+        return magic_wrapper.magic_version() >= version
 
     return magic_wrapper.magic_version >= version
 
