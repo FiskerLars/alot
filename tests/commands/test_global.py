@@ -16,12 +16,10 @@
 
 """Tests for global commands."""
 
-import logging
 import os
 import tempfile
 import unittest
-
-import mock
+from unittest import mock
 
 from alot.commands import globals as g_commands
 
@@ -86,12 +84,12 @@ class TestComposeCommand(unittest.TestCase):
         self.assertIs(envelope.sign_key, None)
 
     def test_get_template_decode(self):
-        subject = u'This is a täßϑ subject.'
-        to = u'recipient@mail.com'
-        _from = u'foo.bar@mail.fr'
-        body = u'Body\n地初店会継思識棋御招告外児山望掲領環。\n€mail body €nd.'
+        subject = 'This is a täßϑ subject.'
+        to = 'recipient@mail.com'
+        _from = 'foo.bar@mail.fr'
+        body = 'Body\n地初店会継思識棋御招告外児山望掲領環。\n€mail body €nd.'
         with tempfile.NamedTemporaryFile('wb', delete=False) as f:
-            txt = u'Subject: {}\nTo: {}\nFrom: {}\n{}'.format(subject, to,
+            txt = 'Subject: {}\nTo: {}\nFrom: {}\n{}'.format(subject, to,
                                                               _from, body)
             f.write(txt.encode('utf-8'))
         self.addCleanup(os.unlink, f.name)
@@ -111,14 +109,14 @@ class TestExternalCommand(unittest.TestCase):
     @utilities.async_test
     async def test_no_spawn_no_stdin_success(self):
         ui = utilities.make_ui()
-        cmd = g_commands.ExternalCommand(u'true', refocus=False)
+        cmd = g_commands.ExternalCommand('true', refocus=False)
         await cmd.apply(ui)
         ui.notify.assert_not_called()
 
     @utilities.async_test
     async def test_no_spawn_stdin_success(self):
         ui = utilities.make_ui()
-        cmd = g_commands.ExternalCommand(u"awk '{ exit $0 }'", stdin=u'0',
+        cmd = g_commands.ExternalCommand("awk '{ exit $0 }'", stdin='0',
                                          refocus=False)
         await cmd.apply(ui)
         ui.notify.assert_not_called()
@@ -126,7 +124,7 @@ class TestExternalCommand(unittest.TestCase):
     @utilities.async_test
     async def test_no_spawn_no_stdin_attached(self):
         ui = utilities.make_ui()
-        cmd = g_commands.ExternalCommand(u'test -t 0', refocus=False)
+        cmd = g_commands.ExternalCommand('test -t 0', refocus=False)
         await cmd.apply(ui)
         ui.notify.assert_not_called()
 
@@ -134,16 +132,20 @@ class TestExternalCommand(unittest.TestCase):
     async def test_no_spawn_stdin_attached(self):
         ui = utilities.make_ui()
         cmd = g_commands.ExternalCommand(
-            u"test -t 0", stdin=u'0', refocus=False)
+            "test -t 0", stdin='0', refocus=False)
         await cmd.apply(ui)
-        ui.notify.assert_called_once_with('', priority='error')
+        ui.notify.assert_called_once_with(
+                'editor has exited with error code 1 -- No stderr output',
+                priority='error')
 
     @utilities.async_test
     async def test_no_spawn_failure(self):
         ui = utilities.make_ui()
-        cmd = g_commands.ExternalCommand(u'false', refocus=False)
+        cmd = g_commands.ExternalCommand('false', refocus=False)
         await cmd.apply(ui)
-        ui.notify.assert_called_once_with('', priority='error')
+        ui.notify.assert_called_once_with(
+                'editor has exited with error code 1 -- No stderr output',
+                priority='error')
 
     @utilities.async_test
     @mock.patch(
@@ -151,7 +153,7 @@ class TestExternalCommand(unittest.TestCase):
     @mock.patch.dict(os.environ, {'DISPLAY': ':0'})
     async def test_spawn_no_stdin_success(self):
         ui = utilities.make_ui()
-        cmd = g_commands.ExternalCommand(u'true', refocus=False, spawn=True)
+        cmd = g_commands.ExternalCommand('true', refocus=False, spawn=True)
         await cmd.apply(ui)
         ui.notify.assert_not_called()
 
@@ -162,8 +164,8 @@ class TestExternalCommand(unittest.TestCase):
     async def test_spawn_stdin_success(self):
         ui = utilities.make_ui()
         cmd = g_commands.ExternalCommand(
-            u"awk '{ exit $0 }'",
-            stdin=u'0', refocus=False, spawn=True)
+            "awk '{ exit $0 }'",
+            stdin='0', refocus=False, spawn=True)
         await cmd.apply(ui)
         ui.notify.assert_not_called()
 
@@ -173,9 +175,11 @@ class TestExternalCommand(unittest.TestCase):
     @mock.patch.dict(os.environ, {'DISPLAY': ':0'})
     async def test_spawn_failure(self):
         ui = utilities.make_ui()
-        cmd = g_commands.ExternalCommand(u'false', refocus=False, spawn=True)
+        cmd = g_commands.ExternalCommand('false', refocus=False, spawn=True)
         await cmd.apply(ui)
-        ui.notify.assert_called_once_with('', priority='error')
+        ui.notify.assert_called_once_with(
+                'editor has exited with error code 1 -- No stderr output',
+                priority='error')
 
 
 class TestCallCommand(unittest.TestCase):

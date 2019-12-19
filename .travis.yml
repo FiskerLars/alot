@@ -3,9 +3,9 @@ sudo: True
 dist: xenial
 
 python:
-  - "3.5"
   - "3.6"
   - "3.7"
+  - "3.8"
 
 # We start two containers in parallel, one to check and build the docs and the
 # other to run the test suite.
@@ -76,10 +76,10 @@ install:
   - pip install urwidtrees
   - pip install configobj
   - pip install gpg
-  - pip install twisted 
+  - pip install twisted
   - pip install python-magic
 
-  - | 
+  - |
     set -e
     if [[ $JOB = docs ]]; then
       # install sphinx (only used to build docs)

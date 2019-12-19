@@ -40,9 +40,9 @@ class OpenThreadCommand(Command):
             query = ui.current_buffer.querystring
             logging.info('open thread view for %s', self.thread)
 
-            sb = buffers.ThreadBuffer(ui, self.thread)
-            ui.buffer_open(sb)
-            sb.unfold_matching(query)
+            tb = buffers.ThreadBuffer(ui, self.thread)
+            ui.buffer_open(tb)
+            tb.unfold_matching(query)
 
 
 @registerCommand(MODE, 'refine', help='refine query', arguments=[
@@ -118,7 +118,7 @@ RetagPromptCommand = registerCommand(MODE, 'retagprompt')(RetagPromptCommand)
                           'default': 'True',
                           'help': 'postpone a writeout to the index'}),
         (['--all'], {'action': 'store_true', 'dest': 'allmessages',
-            'default': False, 
+            'default': False,
             'help': 'retag all messages that match the current query'}),
         (['tags'], {'help': 'comma separated list of tags'})],
     help='set tags to all messages in the selected thread',
@@ -130,7 +130,7 @@ RetagPromptCommand = registerCommand(MODE, 'retagprompt')(RetagPromptCommand)
                           'default': 'True',
                           'help': 'postpone a writeout to the index'}),
         (['--all'], {'action': 'store_true', 'dest': 'allmessages',
-            'default': False, 
+            'default': False,
             'help': 'untag all messages that match the current query'}),
         (['tags'], {'help': 'comma separated list of tags'})],
     help='remove tags from all messages in the selected thread',
@@ -150,7 +150,7 @@ class TagCommand(Command):
     """manipulate message tags"""
     repeatable = True
 
-    def __init__(self, tags=u'', action='add', allmessages=False, flush=True,
+    def __init__(self, tags='', action='add', allmessages=False, flush=True,
                  **kwargs):
         """
         :param tags: comma separated list of tagstrings to set

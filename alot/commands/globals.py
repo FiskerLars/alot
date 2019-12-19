@@ -25,10 +25,10 @@ from .. import buffers
 from .. import helper
 from ..helper import split_commandstring
 from ..helper import mailto_to_envelope
-from ..completion import CommandLineCompleter
-from ..completion import ContactsCompleter
-from ..completion import AccountCompleter
-from ..completion import TagsCompleter
+from ..completion.commandline import CommandLineCompleter
+from ..completion.contacts import ContactsCompleter
+from ..completion.accounts import AccountCompleter
+from ..completion.tags import TagsCompleter
 from ..widgets.utils import DialogBox
 from ..db.errors import DatabaseLockedError
 from ..db.envelope import Envelope
@@ -280,10 +280,10 @@ class ExternalCommand(Command):
                 ret = str(e)
             else:
                 _, err = await proc.communicate(stdin.read() if stdin else None)
-            if proc.returncode == 0:
-                ret = 'success'
-            elif err:
-                ret = err.decode(urwid.util.detected_encoding)
+                if proc.returncode == 0:
+                    ret = 'success'
+                elif err:
+                    ret = err.decode(urwid.util.detected_encoding)
         else:
             with ui.paused():
                 try:
@@ -304,7 +304,10 @@ class ExternalCommand(Command):
             if self.on_success is not None:
                 self.on_success()
         else:
-            ui.notify(ret, priority='error')
+            msg = "editor has exited with error code {} -- {}".format(
+                    proc.returncode,
+                    ret or "No stderr output")
+            ui.notify(msg, priority='error')
         if self.refocus and callerbuffer in ui.buffers:
             logging.info('refocussing')
             ui.buffer_focus(callerbuffer)
@@ -337,12 +340,13 @@ class EditCommand(ExternalCommand):
         logging.debug('using editor_cmd: %s', editor_cmdstring)
 
         self.cmdlist = None
-        if '%s' in editor_cmdstring:
-            cmdstring = editor_cmdstring.replace('%s',
-                                                 helper.shell_quote(path))
-            self.cmdlist = split_commandstring(cmdstring)
-        else:
-            self.cmdlist = split_commandstring(editor_cmdstring) + [path]
+        if editor_cmdstring:
+            if '%s' in editor_cmdstring:
+                cmdstring = editor_cmdstring.replace('%s',
+                                                     helper.shell_quote(path))
+                self.cmdlist = split_commandstring(cmdstring)
+            else:
+                self.cmdlist = split_commandstring(editor_cmdstring) + [path]
 
         logging.debug({'spawn: ': self.spawn, 'in_thread': self.thread})
         ExternalCommand.__init__(self, self.cmdlist,
@@ -723,8 +727,8 @@ class ComposeCommand(Command):
     """compose a new email"""
     def __init__(
             self,
-            envelope=None, headers=None, template=None, sender=u'',
-            tags=None, subject=u'', to=None, cc=None, bcc=None, attach=None,
+            envelope=None, headers=None, template=None, sender='',
+            tags=None, subject='', to=None, cc=None, bcc=None, attach=None,
             omit_signature=False, spawn=None, rest=None, encrypt=False,
             **kwargs):
         """
@@ -943,12 +947,12 @@ class ComposeCommand(Command):
 
     async def _set_gpg_encrypt(self, ui):
         account = self.envelope.account
-        if self.encrypt or account.encrypt_by_default == u"all":
+        if self.encrypt or account.encrypt_by_default == "all":
             logging.debug("Trying to encrypt message because encrypt=%s and "
                           "encrypt_by_default=%s", self.encrypt,
                           account.encrypt_by_default)
             await update_keys(ui, self.envelope, block_error=self.encrypt)
-        elif account.encrypt_by_default == u"trusted":
+        elif account.encrypt_by_default == "trusted":
             logging.debug("Trying to encrypt message because "
                           "account.encrypt_by_default=%s",
                           account.encrypt_by_default)

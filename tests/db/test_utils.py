@@ -10,15 +10,16 @@ import email.header
 import email.mime.application
 import email.policy
 import email.utils
+from email.message import EmailMessage
 import io
 import os
 import os.path
 import shutil
 import tempfile
 import unittest
+from unittest import mock
 
 import gpg
-import mock
 
 from alot import crypto
 from alot.db import utils
@@ -131,37 +132,37 @@ class TestExtractHeader(unittest.TestCase):
             if not line:
                 break
             expected.append(line)
-        expected = u'\n'.join(expected) + u'\n'
+        expected = '\n'.join(expected) + '\n'
         self.assertEqual(actual, expected)
 
     def test_single_headers_can_be_retrieved(self):
         actual = utils.extract_headers(self.mail, ['from'])
-        expected = u'from: me\n'
+        expected = 'from: me\n'
         self.assertEqual(actual, expected)
 
     def test_multible_headers_can_be_retrieved_in_predevined_order(self):
         headers = ['x-header', 'to', 'x-uppercase']
         actual = utils.extract_headers(self.mail, headers)
-        expected = u'x-header: param=one; and=two; or=three\nto: you\n' \
-            u'x-uppercase: PARAM1=ONE; PARAM2=TWO\n'
+        expected = 'x-header: param=one; and=two; or=three\nto: you\n' \
+            'x-uppercase: PARAM1=ONE; PARAM2=TWO\n'
         self.assertEqual(actual, expected)
 
     def test_headers_can_be_retrieved_multible_times(self):
         headers = ['from', 'from']
         actual = utils.extract_headers(self.mail, headers)
-        expected = u'from: me\nfrom: me\n'
+        expected = 'from: me\nfrom: me\n'
         self.assertEqual(actual, expected)
 
     def test_case_is_prserved_in_header_keys_but_irelevant(self):
         headers = ['FROM', 'from']
         actual = utils.extract_headers(self.mail, headers)
-        expected = u'FROM: me\nfrom: me\n'
+        expected = 'FROM: me\nfrom: me\n'
         self.assertEqual(actual, expected)
 
     @unittest.expectedFailure
     def test_header_values_are_not_decoded(self):
         actual = utils.extract_headers(self.mail, ['x-quoted'])
-        expected = u"x-quoted: param=utf-8''%C3%9Cmlaut; second=plain%C3%9C\n",
+        expected = "x-quoted: param=utf-8''%C3%9Cmlaut; second=plain%C3%9C\n",
         self.assertEqual(actual, expected)
 
 
@@ -206,78 +207,78 @@ class TestDecodeHeader(unittest.TestCase):
         self.assertEqual(actual, expected)
 
     def test_non_ascii_strings_are_returned_as_unicode_directly(self):
-        text = u'Nön ÄSCII string¡'
+        text = 'Nön ÄSCII string¡'
         self._test(text, text)
 
     def test_basic_utf_8_quoted(self):
-        expected = u'ÄÖÜäöü'
+        expected = 'ÄÖÜäöü'
         text = self._quote(expected, 'utf-8')
         self._test(text, expected)
 
     def test_basic_iso_8859_1_quoted(self):
-        expected = u'ÄÖÜäöü'
+        expected = 'ÄÖÜäöü'
         text = self._quote(expected, 'iso-8859-1')
         self._test(text, expected)
 
     def test_basic_windows_1252_quoted(self):
-        expected = u'ÄÖÜäöü'
+        expected = 'ÄÖÜäöü'
         text = self._quote(expected, 'windows-1252')
         self._test(text, expected)
 
     def test_basic_utf_8_base64(self):
-        expected = u'ÄÖÜäöü'
+        expected = 'ÄÖÜäöü'
         text = self._base64(expected, 'utf-8')
         self._test(text, expected)
 
     def test_basic_iso_8859_1_base64(self):
-        expected = u'ÄÖÜäöü'
+        expected = 'ÄÖÜäöü'
         text = self._base64(expected, 'iso-8859-1')
         self._test(text, expected)
 
     def test_basic_iso_1252_base64(self):
-        expected = u'ÄÖÜäöü'
+        expected = 'ÄÖÜäöü'
         text = self._base64(expected, 'windows-1252')
         self._test(text, expected)
 
     def test_quoted_words_can_be_interrupted(self):
-        part = u'ÄÖÜäöü'
+        part = 'ÄÖÜäöü'
         text = self._base64(part, 'utf-8') + ' and ' + \
             self._quote(part, 'utf-8')
-        expected = u'ÄÖÜäöü and ÄÖÜäöü'
+        expected = 'ÄÖÜäöü and ÄÖÜäöü'
         self._test(text, expected)
 
     def test_different_encodings_can_be_mixed(self):
-        part = u'ÄÖÜäöü'
+        part = 'ÄÖÜäöü'
         text = 'utf-8: ' + self._base64(part, 'utf-8') + \
             ' again: ' + self._quote(part, 'utf-8') + \
             ' latin1: ' + self._base64(part, 'iso-8859-1') + \
             ' and ' + self._quote(part, 'iso-8859-1')
         expected = (
-            u'utf-8: ÄÖÜäöü '
-            u'again: ÄÖÜäöü '
-            u'latin1: ÄÖÜäöü and ÄÖÜäöü'
+            'utf-8: ÄÖÜäöü '
+            'again: ÄÖÜäöü '
+            'latin1: ÄÖÜäöü and ÄÖÜäöü'
         )
         self._test(text, expected)
 
     def test_tabs_are_expanded_to_align_with_eigth_spaces(self):
         text = 'tab: \t'
-        expected = u'tab:    '
+        expected = 'tab:    '
         self._test(text, expected)
 
     def test_newlines_are_not_touched_by_default(self):
         text = 'first\nsecond\n third\n  fourth'
-        expected = u'first\nsecond\n third\n  fourth'
+        expected = 'first\nsecond\n third\n  fourth'
         self._test(text, expected)
 
     def test_continuation_newlines_can_be_normalized(self):
         text = 'first\nsecond\n third\n\tfourth\n \t  fifth'
-        expected = u'first\nsecond third fourth fifth'
+        expected = 'first\nsecond third fourth fifth'
         actual = utils.decode_header(text, normalize=True)
         self.assertEqual(actual, expected)
-    
+
     def test_exchange_quotes_remain(self):
         # issue #1347
-        expected = u'"Mouse, Michaël" <x@y.z>'
+        expected = '"Mouse, Michaël" <x@y.z>'
         text = self._quote(expected, 'utf-8')
         self._test(text, expected)
 
@@ -291,7 +292,7 @@ class TestAddSignatureHeaders(unittest.TestCase):
         def add_header(self, header, value):
             self.headers.append((header, value))
 
-    def check(self, key, valid, error_msg=u''):
+    def check(self, key, valid, error_msg=''):
         mail = self.FakeMail()
 
         with mock.patch('alot.db.utils.crypto.get_key',
@@ -304,55 +305,55 @@ class TestAddSignatureHeaders(unittest.TestCase):
 
     def test_length_0(self):
         mail = self.FakeMail()
-        utils.add_signature_headers(mail, [], u'')
-        self.assertIn((utils.X_SIGNATURE_VALID_HEADER, u'False'), mail.headers)
+        utils.add_signature_headers(mail, [], '')
+        self.assertIn((utils.X_SIGNATURE_VALID_HEADER, 'False'), mail.headers)
         self.assertIn(
-            (utils.X_SIGNATURE_MESSAGE_HEADER, u'Invalid: no signature found'),
+            (utils.X_SIGNATURE_MESSAGE_HEADER, 'Invalid: no signature found'),
             mail.headers)
 
     def test_valid(self):
         key = make_key()
         mail = self.check(key, True)
 
-        self.assertIn((utils.X_SIGNATURE_VALID_HEADER, u'True'), mail.headers)
+        self.assertIn((utils.X_SIGNATURE_VALID_HEADER, 'True'), mail.headers)
         self.assertIn(
-            (utils.X_SIGNATURE_MESSAGE_HEADER, u'Valid: mocked'), mail.headers)
+            (utils.X_SIGNATURE_MESSAGE_HEADER, 'Valid: mocked'), mail.headers)
 
     def test_untrusted(self):
         key = make_key()
         mail = self.check(key, False)
 
-        self.assertIn((utils.X_SIGNATURE_VALID_HEADER, u'True'), mail.headers)
+        self.assertIn((utils.X_SIGNATURE_VALID_HEADER, 'True'), mail.headers)
         self.assertIn(
-            (utils.X_SIGNATURE_MESSAGE_HEADER, u'Untrusted: mocked'),
+            (utils.X_SIGNATURE_MESSAGE_HEADER, 'Untrusted: mocked'),
             mail.headers)
 
     def test_unicode_as_bytes(self):
         mail = self.FakeMail()
         key = make_key()
-        key.uids = [make_uid('andreá@example.com', uid=u'Andreá')]
+        key.uids = [make_uid('andreá@example.com', uid='Andreá')]
         mail = self.check(key, True)
 
-        self.assertIn((utils.X_SIGNATURE_VALID_HEADER, u'True'), mail.headers)
+        self.assertIn((utils.X_SIGNATURE_VALID_HEADER, 'True'), mail.headers)
         self.assertIn(
-            (utils.X_SIGNATURE_MESSAGE_HEADER, u'Valid: Andreá'),
+            (utils.X_SIGNATURE_MESSAGE_HEADER, 'Valid: Andreá'),
             mail.headers)
 
     def test_error_message_unicode(self):
-        mail = self.check(mock.Mock(), mock.Mock(), u'error message')
-        self.assertIn((utils.X_SIGNATURE_VALID_HEADER, u'False'), mail.headers)
+        mail = self.check(mock.Mock(), mock.Mock(), 'error message')
+        self.assertIn((utils.X_SIGNATURE_VALID_HEADER, 'False'), mail.headers)
         self.assertIn(
-            (utils.X_SIGNATURE_MESSAGE_HEADER, u'Invalid: error message'),
+            (utils.X_SIGNATURE_MESSAGE_HEADER, 'Invalid: error message'),
             mail.headers)
 
     def test_get_key_fails(self):
         mail = self.FakeMail()
         with mock.patch('alot.db.utils.crypto.get_key',
-                        mock.Mock(side_effect=GPGProblem(u'', 0))):
-            utils.add_signature_headers(mail, [mock.Mock(fpr='')], u'')
-        self.assertIn((utils.X_SIGNATURE_VALID_HEADER, u'False'), mail.headers)
+                        mock.Mock(side_effect=GPGProblem('', 0))):
+            utils.add_signature_headers(mail, [mock.Mock(fpr='')], '')
+        self.assertIn((utils.X_SIGNATURE_VALID_HEADER, 'False'), mail.headers)
         self.assertIn(
-            (utils.X_SIGNATURE_MESSAGE_HEADER, u'Untrusted: '),
+            (utils.X_SIGNATURE_MESSAGE_HEADER, 'Untrusted: '),
             mail.headers)
 
 
@@ -394,7 +395,7 @@ class TestMessageFromFile(TestCaseClassCleanup):
         self.assertIs(message.get(utils.X_SIGNATURE_MESSAGE_HEADER), None)
 
     def test_plain_mail(self):
-        m = email.mime.text.MIMEText(u'This is some text', 'plain', 'utf-8')
+        m = email.mime.text.MIMEText('This is some text', 'plain', 'utf-8')
         m['Subject'] = 'test'
         m['From'] = 'me'
         m['To'] = 'Nobody'
@@ -606,14 +607,17 @@ class TestExtractBody(unittest.TestCase):
         mail['From'] = 'bar@example.com'
 
     def test_single_text_plain(self):
-        mail = email.mime.text.MIMEText('This is an email')
+        mail = EmailMessage()
         self._set_basic_headers(mail)
+        mail.set_content('This is an email')
         actual = utils.extract_body(mail)
 
-        expected = 'This is an email'
+        expected = 'This is an email\n'
 
         self.assertEqual(actual, expected)
 
+    @unittest.expectedFailure
+    # This makes no sense
     def test_two_text_plain(self):
         mail = email.mime.multipart.MIMEMultipart()
         self._set_basic_headers(mail)
@@ -625,42 +629,29 @@ class TestExtractBody(unittest.TestCase):
 
         self.assertEqual(actual, expected)
 
-    def test_text_plain_and_other(self):
-        mail = email.mime.multipart.MIMEMultipart()
-        self._set_basic_headers(mail)
-        mail.attach(email.mime.text.MIMEText('This is an email'))
-        mail.attach(email.mime.application.MIMEApplication(b'1'))
-
-        actual = utils.extract_body(mail)
-        expected = 'This is an email'
-
-        self.assertEqual(actual, expected)
-
     def test_text_plain_with_attachment_text(self):
-        mail = email.mime.multipart.MIMEMultipart()
+        mail = EmailMessage()
         self._set_basic_headers(mail)
-        mail.attach(email.mime.text.MIMEText('This is an email'))
-        attachment = email.mime.text.MIMEText('this shouldnt be displayed')
-        attachment['Content-Disposition'] = 'attachment'
-        mail.attach(attachment)
+        mail.set_content('This is an email')
+        mail.add_attachment('this shouldnt be displayed')
 
         actual = utils.extract_body(mail)
-        expected = 'This is an email'
+        expected = 'This is an email\n'
 
         self.assertEqual(actual, expected)
 
     def _make_mixed_plain_html(self):
-        mail = email.mime.multipart.MIMEMultipart()
+        mail = EmailMessage()
         self._set_basic_headers(mail)
-        mail.attach(email.mime.text.MIMEText('This is an email'))
-        mail.attach(email.mime.text.MIMEText(
+        mail.set_content('This is an email')
+        mail.add_alternative(
             '<!DOCTYPE html><html><body>This is an html email</body></html>',
-            'html'))
+            subtype='html')
         return mail
 
     @mock.patch('alot.db.utils.settings.get', mock.Mock(return_value=True))
-    def test_prefer_plaintext(self):
-        expected = 'This is an email'
+    def test_prefer_plaintext_mixed(self):
+        expected = 'This is an email\n'
         mail = self._make_mixed_plain_html()
         actual = utils.extract_body(mail)
 
@@ -671,59 +662,50 @@ class TestExtractBody(unittest.TestCase):
     @mock.patch('alot.db.utils.settings.get', mock.Mock(return_value=False))
     @mock.patch('alot.db.utils.settings.mailcap_find_match',
                 mock.Mock(return_value=(None, {'view': 'cat'})))
-    def test_prefer_html(self):
-        expected = (
-            '<!DOCTYPE html><html><body>This is an html email</body></html>')
+    def test_prefer_html_mixed(self):
+        expected = '<!DOCTYPE html><html><body>This is an html email</body></html>\n'
         mail = self._make_mixed_plain_html()
         actual = utils.extract_body(mail)
 
         self.assertEqual(actual, expected)
 
+    def _make_html_only(self):
+        mail = EmailMessage()
+        self._set_basic_headers(mail)
+        mail.set_content(
+            '<!DOCTYPE html><html><body>This is an html email</body></html>',
+            subtype='html')
+        return mail
+
+    @mock.patch('alot.db.utils.settings.get', mock.Mock(return_value=True))
+    @mock.patch('alot.db.utils.settings.mailcap_find_match',
+                mock.Mock(return_value=(None, {'view': 'cat'})))
+    def test_prefer_plaintext_only(self):
+        expected = '<!DOCTYPE html><html><body>This is an html email</body></html>\n'
+        mail = self._make_html_only()
+        actual = utils.extract_body(mail)
+
+        self.assertEqual(actual, expected)
+
+    # Mock the handler to cat, so that no transformations of the html are made
+    # making the result non-deterministic
     @mock.patch('alot.db.utils.settings.get', mock.Mock(return_value=False))
     @mock.patch('alot.db.utils.settings.mailcap_find_match',
                 mock.Mock(return_value=(None, {'view': 'cat'})))
-    def test_types_provided(self):
-        # This should not return html, even though html is set to preferred
-        # since a types variable is passed
-        expected = 'This is an email'
-        mail = self._make_mixed_plain_html()
-        actual = utils.extract_body(mail, types=['text/plain'])
-
-        self.assertEqual(actual, expected)
-
-    @mock.patch('alot.db.utils.settings.mailcap_find_match',
-                mock.Mock(return_value=(None, {'view': 'cat'})))
-    def test_require_mailcap_stdin(self):
-        mail = email.mime.multipart.MIMEMultipart()
-        self._set_basic_headers(mail)
-        mail.attach(email.mime.text.MIMEText(
-            '<!DOCTYPE html><html><body>This is an html email</body></html>',
-            'html'))
+    def test_prefer_html_only(self):
+        expected = '<!DOCTYPE html><html><body>This is an html email</body></html>\n'
+        mail = self._make_html_only()
         actual = utils.extract_body(mail)
-        expected = (
-            '<!DOCTYPE html><html><body>This is an html email</body></html>')
-
-        self.assertEqual(actual, expected)
-
-    @mock.patch('alot.db.utils.settings.mailcap_find_match',
-                mock.Mock(return_value=(None, {'view': 'cat %s'})))
-    def test_require_mailcap_file(self):
-        mail = email.mime.multipart.MIMEMultipart()
-        self._set_basic_headers(mail)
-        mail.attach(email.mime.text.MIMEText(
-            '<!DOCTYPE html><html><body>This is an html email</body></html>',
-            'html'))
-        actual = utils.extract_body(mail)
-        expected = (
-            '<!DOCTYPE html><html><body>This is an html email</body></html>')
 
         self.assertEqual(actual, expected)
 
     def test_simple_utf8_file(self):
         mail = email.message_from_binary_file(
-                open('tests/static/mail/utf8.eml', 'rb'))
+                open('tests/static/mail/utf8.eml', 'rb'),
+                _class=email.message.EmailMessage)
         actual = utils.extract_body(mail)
         expected = "Liebe Grüße!\n"
+
         self.assertEqual(actual, expected)
 
 class TestMessageFromString(unittest.TestCase):
@@ -736,7 +718,7 @@ class TestMessageFromString(unittest.TestCase):
     """
 
     def test(self):
-        m = email.mime.text.MIMEText(u'This is some text', 'plain', 'utf-8')
+        m = email.mime.text.MIMEText('This is some text', 'plain', 'utf-8')
         m['Subject'] = 'test'
         m['From'] = 'me'
         m['To'] = 'Nobody'
@@ -815,15 +797,15 @@ class _AccountTestClass(Account):
 
 class TestClearMyAddress(unittest.TestCase):
 
-    me1 = u'me@example.com'
-    me2 = u'ME@example.com'
-    me3 = u'me+label@example.com'
-    me4 = u'ME+label@example.com'
+    me1 = 'me@example.com'
+    me2 = 'ME@example.com'
+    me3 = 'me+label@example.com'
+    me4 = 'ME+label@example.com'
     me_regex = r'me\+.*@example.com'
-    me_named = u'alot team <me@example.com>'
-    you = u'you@example.com'
-    named = u'somebody you know <somebody@example.com>'
-    imposter = u'alot team <imposter@example.com>'
+    me_named = 'alot team <me@example.com>'
+    you = 'you@example.com'
+    named = 'somebody you know <somebody@example.com>'
+    imposter = 'alot team <imposter@example.com>'
     mine = _AccountTestClass(
         address=me1, aliases=[], alias_regexp=me_regex, case_sensitive_username=True)
 
@@ -859,7 +841,7 @@ class TestClearMyAddress(unittest.TestCase):
 
 class TestFormataddr(unittest.TestCase):
 
-    address = u'me@example.com'
+    address = 'me@example.com'
     umlauts_and_comma = '"Ö, Ä" <a@b.c>'
 
     def test_is_inverse(self):
@@ -867,10 +849,10 @@ class TestFormataddr(unittest.TestCase):
                 utils.formataddr(email.utils.parseaddr(self.umlauts_and_comma)),
                 self.umlauts_and_comma
                 )
-    
+
     def test_address_only(self):
         self.assertEqual(utils.formataddr(("", self.address)), self.address)
-    
+
     def test_name_and_address_no_comma(self):
         self.assertEqual(
                 utils.formataddr(("Me", self.address)),

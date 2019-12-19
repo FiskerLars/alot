@@ -21,7 +21,6 @@ setup(
             'License :: OSI Approved'
             ':: GNU General Public License v3 or later (GPLv3+)'),
         'Operating System :: POSIX',
-        'Programming Language :: Python :: 3.5',
         'Programming Language :: Python :: 3.6',
         'Programming Language :: Python :: 3.7',
         'Programming Language :: Python :: 3 :: Only',
@@ -48,15 +47,12 @@ setup(
         'notmuch>=0.27',
         'urwid>=1.3.0',
         'urwidtrees>=1.0',
-        'twisted>=10.2.0',
+        'twisted>=18.4.0',
         'python-magic',
         'configobj>=4.7.0',
         'gpg'
     ],
-    tests_require=[
-        'mock',
-    ],
     provides=['alot'],
     test_suite="tests",
-    python_requires=">=3.5",
+    python_requires=">=3.6",
 )

@@ -12,6 +12,7 @@ from .globals import TagWidget
 from .globals import AttachmentWidget
 from ..settings.const import settings
 from ..db.utils import decode_header, X_SIGNATURE_MESSAGE_HEADER
+from ..helper import string_sanitize
 
 
 class MessageSummaryWidget(urwid.WidgetWrap):
@@ -169,7 +170,7 @@ class MessageTree(CollapsibleTree):
         self._default_headers_tree = None
         self.display_attachments = True
         self._attachments = None
-        self._maintree = SimpleTree(self._assemble_structure())
+        self._maintree = SimpleTree(self._assemble_structure(True))
         CollapsibleTree.__init__(self, self._maintree)
 
     def get_message(self):
@@ -191,7 +192,23 @@ class MessageTree(CollapsibleTree):
         logging.debug('DHT %s', str(self._default_headers_tree))
         logging.debug('MAINTREE %s', str(self._maintree._treelist))
 
-    def _assemble_structure(self):
+    def expand(self, pos):
+        """
+        overload CollapsibleTree.expand method to ensure all parts are present.
+        Initially, only the summary widget is created to avoid reading the
+        messafe file and thus speed up the creation of this object. Once we
+        expand = unfold the message, we need to make sure that body/attachments
+        exist.
+        """
+        logging.debug("MT expand")
+        if not self._bodytree:
+            self.reassemble()
+        CollapsibleTree.expand(self, pos)
+
+    def _assemble_structure(self, summary_only=False):
+        if summary_only:
+            return [(self._get_summary(), None)]
+
         mainstruct = []
         if self.display_source:
             mainstruct.append((self._get_source(), None))
@@ -228,6 +245,7 @@ class MessageTree(CollapsibleTree):
     def _get_source(self):
         if self._sourcetree is None:
             sourcetxt = self._message.get_email().as_string()
+            sourcetxt = string_sanitize(sourcetxt)
             att = settings.get_theming_attribute('thread', 'body')
             att_focus = settings.get_theming_attribute('thread', 'body_focus')
             self._sourcetree = TextlinesList(sourcetxt, att, att_focus)
@@ -235,7 +253,7 @@ class MessageTree(CollapsibleTree):
 
     def _get_body(self):
         if self._bodytree is None:
-            bodytxt = self._message.accumulate_body()
+            bodytxt = self._message.get_body_text()
             if bodytxt:
                 att = settings.get_theming_attribute('thread', 'body')
                 att_focus = settings.get_theming_attribute(

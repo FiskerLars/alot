@@ -78,7 +78,7 @@ class Envelope:
             self.parse_template(template)
             logging.debug('PARSED TEMPLATE: %s', template)
             logging.debug('BODY: %s', self.body)
-        self.body = bodytext or u''
+        self.body = bodytext or ''
         # TODO: if this was as collections.defaultdict a number of methods
         # could be simplified.
         self.headers = headers or {}
@@ -100,7 +100,7 @@ class Envelope:
 
     def __setitem__(self, name, val):
         """setter for header values. This allows adding header like so:
-        envelope['Subject'] = u'sm\xf8rebr\xf8d'
+        envelope['Subject'] = 'sm\xf8rebr\xf8d'
         """
         if name not in self.headers:
             self.headers[name] = []
@@ -272,9 +272,15 @@ class Envelope:
             outer_msg = unencrypted_msg
 
         headers = self.headers.copy()
+
+        # add Date header
+        if 'Date' not in headers:
+            headers['Date'] = [email.utils.formatdate(localtime=True)]
+
         # add Message-ID
         if 'Message-ID' not in headers:
-            headers['Message-ID'] = [email.utils.make_msgid()]
+            domain = settings.get('message_id_domain')
+            headers['Message-ID'] = [email.utils.make_msgid(domain=domain)]
 
         if 'User-Agent' in headers:
             uastring_format = headers['User-Agent'][0]
@@ -291,50 +297,42 @@ class Envelope:
 
         return outer_msg
 
-    def parse_template(self, tmp, reset=False, only_body=False):
+    def parse_template(self, raw, reset=False, only_body=False):
         """parses a template or user edited string to fills this envelope.
 
-        :param tmp: the string to parse.
-        :type tmp: str
+        :param raw: the string to parse.
+        :type raw: str
         :param reset: remove previous envelope content
         :type reset: bool
+        :param only_body: do not parse headers
+        :type only_body: bool
         """
-        logging.debug('GoT: """\n%s\n"""', tmp)
+        logging.debug('GoT: """\n%s\n"""', raw)
 
         if self.sent_time:
             self.modified_since_sent = True
 
-        if only_body:
-            self.body = tmp
-        else:
-            m = re.match(r'(?P<h>([a-zA-Z0-9_-]+:.+\n)*)\n?(?P<b>(\s*.*)*)',
-                         tmp)
-            assert m
+        if reset:
+            self.headers = {}
 
-            d = m.groupdict()
-            headertext = d['h']
-            self.body = d['b']
-
-            # remove existing content
-            if reset:
-                self.headers = {}
-
+        headerEndPos = 0
+        if not only_body:
             # go through multiline, utf-8 encoded headers
+            # locally, lines are separated by a simple LF, not CRLF
             # we decode the edited text ourselves here as
             # email.message_from_file can't deal with raw utf8 header values
-            key = value = None
-            for line in headertext.splitlines():
-                if re.match('[a-zA-Z0-9_-]+:', line):  # new k/v pair
-                    if key and value:  # save old one from stack
-                        self.add(key, value)  # save
-                    key, value = line.strip().split(':', 1)  # parse new pair
-                    # strip spaces, otherwise we end up having " foo" as value
-                    # of "Subject: foo"
-                    value = value.strip()
-                elif key and value:  # append new line without key prefix
-                    value += line
-            if key and value:  # save last one if present
-                self.add(key, value)
+            headerRe = re.compile(r'^(?P<k>.+?):(?P<v>(.|\n[ \t\r\f\v])+)$',
+                                  re.MULTILINE)
+            for header in headerRe.finditer(raw):
+                if header.start() > headerEndPos + 1:
+                    break  # switched to body
+
+                key = header.group('k')
+                # simple unfolding as decribed in
+                # https://tools.ietf.org/html/rfc2822#section-2.2.3
+                unfoldedValue = header.group('v').replace('\n', '')
+                self.add(key, unfoldedValue.strip())
+                headerEndPos = header.end()
 
             # interpret 'Attach' pseudo header
             if 'Attach' in self:
@@ -347,3 +345,5 @@ class Envelope:
                 for path in to_attach:
                     self.attach(path)
                 del self['Attach']
+
+        self.body = raw[headerEndPos:].strip()

@@ -19,28 +19,13 @@ import email.policy
 import os
 import tempfile
 import unittest
-
-import mock
+from unittest import mock
 
 from alot.db import envelope
 
 SETTINGS = {
     'user_agent': 'agent',
 }
-
-
-def email_to_dict(mail):
-    """Consumes an email, and returns a dict of headers and 'Body'."""
-    split = mail.splitlines()
-    final = {}
-    for line in split:
-        if line.strip():
-            try:
-                k, v = line.split(':')
-                final[k.strip()] = v.strip()
-            except ValueError:
-                final['Body'] = line.strip()
-    return final
 
 
 class TestEnvelope(unittest.TestCase):
@@ -63,8 +48,8 @@ class TestEnvelope(unittest.TestCase):
     def test_setitem_stores_text_unchanged(self):
         "Just ensure that the value is set and unchanged"
         e = envelope.Envelope()
-        e['Subject'] = u'sm\xf8rebr\xf8d'
-        self.assertEqual(e['Subject'], u'sm\xf8rebr\xf8d')
+        e['Subject'] = 'sm\xf8rebr\xf8d'
+        self.assertEqual(e['Subject'], 'sm\xf8rebr\xf8d')
 
     def _test_mail(self, envelope):
         mail = envelope.construct_mail()
@@ -101,3 +86,24 @@ class TestEnvelope(unittest.TestCase):
         e.attach(f.name)
 
         self._test_mail(e)
+
+    @mock.patch('alot.db.envelope.settings', SETTINGS)
+    def test_parse_template(self):
+        """Tests multi-line header and body parsing"""
+        raw = (
+            'From: foo@example.com\n'
+            'To: bar@example.com,\n'
+            ' baz@example.com\n'
+            'Subject: Fwd: Test email\n'
+            '\n'
+            'Some body content: which is not a header.\n'
+        )
+        envlp = envelope.Envelope()
+        envlp.parse_template(raw)
+        self.assertDictEqual(envlp.headers, {
+            'From': ['foo@example.com'],
+            'To': ['bar@example.com, baz@example.com'],
+            'Subject': ['Fwd: Test email']
+        })
+        self.assertEqual(envlp.body,
+                         'Some body content: which is not a header.')
