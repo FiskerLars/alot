@@ -19,9 +19,9 @@
 import asyncio
 import functools
 import unittest
+from unittest import mock
 
 import gpg
-import mock
 
 
 def _tear_down_class_wrapper(original, cls):
@@ -93,6 +93,7 @@ class TestCaseClassCleanup(unittest.TestCase):
 
     @classmethod
     def doClassCleanups(cls):  # pylint: disable=invalid-name
+        cls.tearDown_exceptions = []
         while cls.__stack:
             func, args, kwargs = cls.__stack.pop()
 
@@ -147,7 +148,7 @@ class ModuleCleanup(object):
         return wrapper
 
 
-def make_uid(email, uid=u'mocked', revoked=False, invalid=False,
+def make_uid(email, uid='mocked', revoked=False, invalid=False,
              validity=gpg.constants.validity.FULL):
     uid_ = mock.Mock()
     uid_.email = email
@@ -162,7 +163,7 @@ def make_uid(email, uid=u'mocked', revoked=False, invalid=False,
 def make_key(revoked=False, expired=False, invalid=False, can_encrypt=True,
              can_sign=True):
     mock_key = mock.Mock()
-    mock_key.uids = [make_uid(u'foo@example.com')]
+    mock_key.uids = [make_uid('foo@example.com')]
     mock_key.revoked = revoked
     mock_key.expired = expired
     mock_key.invalid = invalid

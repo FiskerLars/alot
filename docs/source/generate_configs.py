@@ -28,7 +28,7 @@ def rewrite_entries(config, path, specpath, sec=None):
         sec = config
     for entry in sorted(sec.scalars):
         v = Validator()
-        etype, eargs, ekwargs, default = v._parse_check(sec[entry])
+        etype, eargs, _, default = v._parse_check(sec[entry])
         if default is not None:
             default = config._quote(default)
 
@@ -39,7 +39,7 @@ def rewrite_entries(config, path, specpath, sec=None):
         comments = [sec.inline_comments[entry]] + sec.comments[entry]
         for c in comments:
             if c:
-                description += ' '*4 + re.sub('^\s*#', '', c)
+                description += ' ' * 4 + re.sub(r'^\s*#', '', c)
                 description = description.rstrip(' ') + '\n'
         if etype == 'option':
             description += '\n    :type: option, one of %s\n' % eargs

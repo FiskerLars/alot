@@ -27,6 +27,7 @@ from ..helper import string_decode
 from ..settings.const import settings
 from ..settings.errors import NoMatchingAccount
 from ..utils import argparse as cargparse
+from ..utils.collections import OrderedSet
 
 
 MODE = 'envelope'
@@ -130,8 +131,6 @@ class SaveCommand(Command):
 
         mail = envelope.construct_mail()
         # store mail locally
-        # add Date header
-        mail['Date'] = email.utils.formatdate(localtime=True)
         path = account.store_draft_mail(
             mail.as_string(policy=email.policy.SMTP))
 
@@ -236,12 +235,11 @@ class SendCommand(Command):
                                     msg_position='left')) == 'no':
                     return
 
-            clearme = ui.notify(u'constructing mail (GPG, attachments)\u2026',
+            clearme = ui.notify('constructing mail (GPG, attachments)…',
                                 timeout=-1)
 
             try:
                 self.mail = self.envelope.construct_mail()
-                self.mail['Date'] = email.utils.formatdate(localtime=True)
                 self.mail = self.mail.as_string(policy=email.policy.SMTP)
             except GPGProblem as e:
                 ui.clear_notify([clearme])
@@ -341,9 +339,9 @@ class EditCommand(Command):
             self.envelope = ui.current_buffer.envelope
 
         # determine editable headers
-        edit_headers = set(settings.get('edit_headers_whitelist'))
+        edit_headers = OrderedSet(settings.get('edit_headers_whitelist'))
         if '*' in edit_headers:
-            edit_headers = set(self.envelope.headers)
+            edit_headers = OrderedSet(self.envelope.headers)
         blacklist = set(settings.get('edit_headers_blacklist'))
         if '*' in blacklist:
             blacklist = set(self.envelope.headers)
@@ -375,7 +373,7 @@ class EditCommand(Command):
                 ebuffer.rebuild()
 
         # decode header
-        headertext = u''
+        headertext = ''
         for key in edit_headers:
             vlist = self.envelope.get_all(key)
             if not vlist:
@@ -664,7 +662,7 @@ class TagCommand(Command):
     """manipulate message tags"""
     repeatable = True
 
-    def __init__(self, tags=u'', action='add', **kwargs):
+    def __init__(self, tags='', action='add', **kwargs):
         """
         :param tags: comma separated list of tagstrings to set
         :type tags: str

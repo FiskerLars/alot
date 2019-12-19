@@ -4,8 +4,7 @@
 
 import argparse
 import unittest
-
-import mock
+from unittest import mock
 
 from alot import commands
 from alot.commands import thread
@@ -34,7 +33,7 @@ class TestCommandFactory(unittest.TestCase):
         cmd = commands.commandfactory('save --all /foo', mode='thread')
         self.assertIsInstance(cmd, thread.SaveAttachmentCommand)
         self.assertTrue(cmd.all)
-        self.assertEqual(cmd.path, u'/foo')
+        self.assertEqual(cmd.path, '/foo')
 
 
 class TestRegisterCommand(unittest.TestCase):

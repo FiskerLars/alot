@@ -17,8 +17,7 @@
 """Tests for the alot.widgets.globals module."""
 
 import unittest
-
-import mock
+from unittest import mock
 
 from alot.widgets import globals as globals_
 
@@ -41,7 +40,7 @@ class TestTagWidget(unittest.TestCase):
     def test_hash_for_unicode_representation(self):
         with mock.patch(
                 'alot.widgets.globals.settings.get_tagstring_representation',
-                lambda _, __, ___: {'translated': u'✉', 'normal': None,
+                lambda _, __, ___: {'translated': '✉', 'normal': None,
                                     'focussed': None}):
             # We don't have to assert anything, we just want the hash to be
             # computed without an exception.  The implementation currently

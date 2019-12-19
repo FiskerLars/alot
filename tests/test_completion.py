@@ -5,10 +5,10 @@
 
 """Tests for the alot.completion module."""
 import unittest
+from unittest import mock
 
-import mock
-
-from alot import completion
+from alot.completion.abooks import AbooksCompleter
+from alot.completion.stringlist import StringlistCompleter
 
 # Good descriptive test names often don't fit PEP8, which is meant to cover
 # functions meant to be called by humans.
@@ -20,6 +20,7 @@ def _mock_lookup(query):
     abook = [
         ("", "no-real-name@example.com"),
         ("foo", "foo@example.com"),
+        ("Ümläut", "umlaut@example.com"),
         ("comma, person", "comma@example.com"),
         ("single 'quote' person", "squote@example.com"),
         ('double "quote" person', "dquote@example.com"),
@@ -39,8 +40,8 @@ class AbooksCompleterTest(unittest.TestCase):
     def setUpClass(cls):
         abook = mock.Mock()
         abook.lookup = _mock_lookup
-        cls.empty_abook_completer = completion.AbooksCompleter([])
-        cls.example_abook_completer = completion.AbooksCompleter([abook])
+        cls.empty_abook_completer = AbooksCompleter([])
+        cls.example_abook_completer = AbooksCompleter([abook])
 
     def test_empty_address_book_returns_empty_list(self):
         actual = self.__class__.empty_abook_completer.complete('real-name', 9)
@@ -65,6 +66,11 @@ class AbooksCompleterTest(unittest.TestCase):
         expected = [("foo <foo@example.com>", 21)]
         self.assertListEqual(actual, expected)
 
+    def test_simple_address_with_umlaut_real_name(self):
+        actual = self.__class__.example_abook_completer.complete("umlaut", 6)
+        expected = [("Ümläut <umlaut@example.com>", 27)]
+        self.assertListEqual(actual, expected)
+
     def test_real_name_with_comma(self):
         actual = self.__class__.example_abook_completer.complete("comma", 5)
         expected = [('"comma, person" <comma@example.com>', 35)]
@@ -79,20 +85,20 @@ class AbooksCompleterTest(unittest.TestCase):
         actual = self.__class__.example_abook_completer.complete("dquote", 6)
         expected = [("", 0)]
         expected = [
-            (r""""double \"quote\" person" <dquote@example.com>""", 46)]
+            (r"""double "quote" person <dquote@example.com>""", 42)]
         self._assert_only_one_list_entry(actual, expected)
 
     def test_real_name_with_quotes_and_comma(self):
         actual = self.__class__.example_abook_completer.complete("all", 3)
-        expected = [(r""""all 'fanzy' \"stuff\" at, once" <all@example.com>""",
-                     50)]
+        expected = [(r""""all 'fanzy' "stuff" at, once" <all@example.com>""",
+                     48)]
         self._assert_only_one_list_entry(actual, expected)
 
 
 class StringlistCompleterTest(unittest.TestCase):
     def test_dont_choke_on_special_regex_characters(self):
         tags = ['[match]', 'nomatch']
-        completer = completion.StringlistCompleter(tags)
+        completer = StringlistCompleter(tags)
         actual = completer.complete('[', 1)
         expected = [(tags[0], len(tags[0]))]
         self.assertListEqual(actual, expected)
